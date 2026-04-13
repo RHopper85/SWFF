@@ -1,0 +1,72 @@
+{
+  "name": "sw-font-finder",
+  "version": "2.1.0",
+  "description": "Standalone Star Wars Font Finder and Preview App",
+  "author": "Rob Hopper",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder",
+    "build:win": "electron-builder --win nsis",
+    "build:portable": "electron-builder --win portable"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9",
+    "fontkit": "^2.0.0"
+  },
+  "devDependencies": {
+    "electron": "^32.0.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.robhopper.swfontfinder",
+    "productName": "Star Wars Font Finder",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "**/*",
+      "!fonts/**/*",
+      "!dist/**/*",
+      "!release/**/*",
+      "!dev-app-update.yml"
+    ],
+    "extraFiles": [
+      {
+        "from": "fonts",
+        "to": "fonts",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "asar": true,
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "RHopper85",
+        "repo": "SWFF"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "SWFF_Icon.ico",
+      "artifactName": "Star-Wars-Font-Finder-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  }
+}

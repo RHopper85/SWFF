@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Star Wars Font Finder</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <header class="top-bar">
+    <div class="app-title">Star Wars Font Finder</div>
+
+    <div class="controls">
+      <label class="control-group">
+        <span>Phrase:</span>
+        <input id="phraseInput" type="text" placeholder="Type your phrase here..." />
+      </label>
+
+      <label class="control-group">
+        <span>Size:</span>
+        <input id="sizeInput" type="range" min="10" max="80" value="32" />
+        <span id="sizeLabel" class="size-label">32px</span>
+      </label>
+
+      <button id="reloadBtn" class="btn">Reload Fonts</button>
+      <span class="font-count"><span id="fontCount">0</span> fonts</span>
+    </div>
+  </header>
+
+  <main class="main-area">
+    <div id="statusBar" class="status-bar hidden"></div>
+    <div id="fontList" class="font-list"></div>
+  </main>
+
+  <footer class="footer-bar">
+    <div id="footerStatusText" class="footer-status-text"></div>
+    <div id="versionFooterText" class="version-footer-text"></div>
+  </footer>
+
+  <div id="modalOverlay" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div id="modalTitle" class="modal-title"></div>
+      </div>
+      <div id="modalBody" class="modal-body"></div>
+      <div id="modalActions" class="modal-actions"></div>
+    </div>
+  </div>
+
+  <script src="./script.js"></script>
+</body>
+</html>
