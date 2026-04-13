@@ -12,8 +12,19 @@
 
     <div class="controls">
       <label class="control-group">
+        <span>Search:</span>
+        <div class="search-input-wrap">
+          <input id="searchInput" type="text" placeholder="Filter fonts by file name..." />
+          <button id="clearSearchBtn" class="clear-search-btn" type="button" aria-label="Clear search">✕</button>
+        </div>
+      </label>
+
+      <label class="control-group">
         <span>Phrase:</span>
-        <input id="phraseInput" type="text" placeholder="Type your phrase here..." />
+        <div class="phrase-input-wrap">
+          <input id="phraseInput" type="text" placeholder="Type your phrase here..." />
+          <button id="clearPhraseBtn" class="clear-phrase-btn" type="button" aria-label="Reset phrase">✕</button>
+        </div>
       </label>
 
       <label class="control-group">

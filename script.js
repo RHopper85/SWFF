@@ -2,7 +2,10 @@ const fs = require("fs");
 const path = require("path");
 const { pathToFileURL } = require("url");
 const fontkit = require("fontkit");
-const { ipcRenderer } = require("electron");
+const { ipcRenderer, shell } = require("electron");
+
+const DEFAULT_PHRASE =
+  "Quick Jedi Bravely Fix Damaged X-Wings On Foggy Naboo Swamp 1234567890";
 
 let phraseInput;
 let sizeInput;
@@ -13,6 +16,9 @@ let reloadBtn;
 let statusBar;
 let footerStatusText;
 let versionFooterText;
+let searchInput;
+let clearSearchBtn;
+let clearPhraseBtn;
 
 let modalOverlay;
 let modalTitle;
@@ -26,6 +32,9 @@ let updateAvailableModalShown = false;
 
 window.addEventListener("DOMContentLoaded", async () => {
   phraseInput = document.getElementById("phraseInput");
+  searchInput = document.getElementById("searchInput");
+  clearSearchBtn = document.getElementById("clearSearchBtn");
+  clearPhraseBtn = document.getElementById("clearPhraseBtn");
   sizeInput = document.getElementById("sizeInput");
   sizeLabel = document.getElementById("sizeLabel");
   fontList = document.getElementById("fontList");
@@ -40,8 +49,36 @@ window.addEventListener("DOMContentLoaded", async () => {
   modalBody = document.getElementById("modalBody");
   modalActions = document.getElementById("modalActions");
 
-  phraseInput.value =
-    "Quick Jedi Bravely Fix Damaged X-Wings On Foggy Naboo Swamp 1234567890";
+  if (searchInput) {
+    searchInput.addEventListener("input", applyFontFilter);
+  }
+
+  if (clearSearchBtn) {
+    clearSearchBtn.addEventListener("click", () => {
+      if (!searchInput) return;
+      searchInput.value = "";
+      applyFontFilter();
+
+      if (fontList) {
+        fontList.scrollTo({
+          top: 0,
+          behavior: "smooth"
+        });
+      }
+
+      searchInput.focus();
+    });
+  }
+
+  if (clearPhraseBtn) {
+    clearPhraseBtn.addEventListener("click", () => {
+      phraseInput.value = DEFAULT_PHRASE;
+      updateSamples();
+      phraseInput.focus();
+    });
+  }
+
+  phraseInput.value = DEFAULT_PHRASE;
 
   phraseInput.addEventListener("input", updateSamples);
 
@@ -63,8 +100,25 @@ window.addEventListener("DOMContentLoaded", async () => {
   });
 
   window.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && modalOverlay.classList.contains("show")) {
+    if (e.key !== "Escape") return;
+
+    if (modalOverlay.classList.contains("show")) {
       closeModal();
+      return;
+    }
+
+    if (searchInput && searchInput.value.trim() !== "") {
+      searchInput.value = "";
+      applyFontFilter();
+
+      if (fontList) {
+        fontList.scrollTo({
+          top: 0,
+          behavior: "smooth"
+        });
+      }
+
+      searchInput.focus();
     }
   });
 
@@ -119,7 +173,7 @@ function wireIpcEvents() {
       }, 2000);
     }
   });
-  
+
   ipcRenderer.on("manual-update-check-result", (_event, data) => {
     if (!data?.ok) {
       showMessageModal("Update Check", data.message || "Update check failed.");
@@ -162,6 +216,32 @@ async function saveDescription(fontFile, description) {
   }
 
   showMessageModal("Save Failed", res.message || "Failed to save description.");
+  return false;
+}
+
+async function resetDescriptionToDefault(fontFile) {
+  const res = await ipcRenderer.invoke("reset-font-description-to-default", {
+    fontFile
+  });
+
+  if (res.ok) {
+    descriptions = res.descriptions || {};
+    return true;
+  }
+
+  showMessageModal("Reset Failed", res.message || "Failed to reset description.");
+  return false;
+}
+
+async function hasDefaultDescription(fontFile) {
+  const res = await ipcRenderer.invoke("has-default-font-description", {
+    fontFile
+  });
+
+  if (res.ok) {
+    return !!res.hasDefault;
+  }
+
   return false;
 }
 
@@ -210,9 +290,9 @@ async function loadFonts() {
       numeric: true
     })
   );
-  fontCache = fonts;
 
-  renderFontList(fonts);
+  fontCache = fonts;
+  await renderFontList(fonts);
 }
 
 function getDisplayName(fullPath, filename) {
@@ -244,6 +324,8 @@ async function renderFontList(fonts) {
 
     const row = document.createElement("div");
     row.className = "font-row";
+    row.dataset.fileName = font.file || "";
+    row.dataset.displayName = font.name || "";
 
     row.addEventListener("contextmenu", (e) => {
       e.preventDefault();
@@ -300,7 +382,8 @@ async function renderFontList(fonts) {
 
     try {
       const face = new FontFace(fontId, `url(${font.url})`);
-      face.load()
+      face
+        .load()
         .then((loadedFace) => {
           document.fonts.add(loadedFace);
           sample.style.fontFamily = `"${fontId}"`;
@@ -314,48 +397,105 @@ async function renderFontList(fonts) {
 
     row.appendChild(header);
     row.appendChild(sample);
-
-    // Append immediately so sorted order stays stable
     fontList.appendChild(row);
 
-    // Check install status after append so rows do not reorder
     if (isInstallable && installBtn) {
-      ipcRenderer.invoke("is-font-installed", {
-        fontPath: font.path,
-        displayName: font.name
-      }).then((installStatus) => {
-        if (installStatus.ok && installStatus.installed) {
-          installBtn.textContent = "Installed";
-          installBtn.classList.add("installed");
+      const setInstallState = () => {
+        installBtn.textContent = "Install";
+        installBtn.disabled = false;
+        installBtn.classList.remove("installed", "uninstall");
+
+        installBtn.onclick = async () => {
           installBtn.disabled = true;
-        } else {
-          installBtn.textContent = "Install";
-          installBtn.disabled = false;
+          installBtn.textContent = "Installing...";
 
-          installBtn.onclick = async () => {
-            installBtn.disabled = true;
-            installBtn.textContent = "Installing...";
+          const result = await ipcRenderer.invoke("install-font", {
+            fontPath: font.path,
+            displayName: font.name
+          });
 
-            const result = await ipcRenderer.invoke("install-font", {
-              fontPath: font.path,
-              displayName: font.name
-            });
+          if (result.ok) {
+            showInlineStatus(result.message || "Font installed.", "success", 2500);
+            setUninstallState();
+          } else {
+            installBtn.disabled = false;
+            installBtn.textContent = "Install";
+            showMessageModal(
+              "Install Failed",
+              result.message || "Could not install font."
+            );
+          }
+        };
+      };
 
-            if (result.ok) {
-              installBtn.textContent = "Installed";
-              installBtn.classList.add("installed");
-              installBtn.disabled = true;
-              showInlineStatus(result.message || "Font installed.", "success", 2500);
-            } else {
-              installBtn.textContent = "Install";
-              installBtn.disabled = false;
-              showMessageModal("Install Failed", result.message || "Could not install font.");
-            }
-          };
-        }
-      });
+      const setUninstallState = () => {
+        installBtn.textContent = "Uninstall";
+        installBtn.disabled = false;
+        installBtn.classList.remove("installed");
+        installBtn.classList.add("uninstall");
+
+        installBtn.onclick = async () => {
+          installBtn.disabled = true;
+          installBtn.textContent = "Uninstalling...";
+
+          const result = await ipcRenderer.invoke("uninstall-font", {
+            fontPath: font.path,
+            displayName: font.name
+          });
+
+          if (result.ok) {
+            showInlineStatus(result.message || "Font uninstalled.", "success", 2500);
+            setInstallState();
+          } else {
+            installBtn.disabled = false;
+            installBtn.textContent = "Uninstall";
+            showMessageModal(
+              "Uninstall Failed",
+              result.message || "Could not uninstall font."
+            );
+          }
+        };
+      };
+
+      ipcRenderer
+        .invoke("is-font-installed", {
+          fontPath: font.path,
+          displayName: font.name
+        })
+        .then((installStatus) => {
+          if (installStatus.ok && installStatus.installed) {
+            setUninstallState();
+          } else {
+            setInstallState();
+          }
+        });
     }
   }
+
+  applyFontFilter();
+}
+
+function applyFontFilter() {
+  const query = (searchInput?.value || "").trim().toLowerCase();
+  const rows = document.querySelectorAll(".font-row");
+
+  rows.forEach((row) => {
+    const fileName = (row.dataset.fileName || "").toLowerCase();
+    const displayName = (row.dataset.displayName || "").toLowerCase();
+
+    const match =
+      !query ||
+      fileName.includes(query) ||
+      displayName.includes(query);
+
+    row.style.display = match ? "" : "none";
+  });
+
+  const visibleCount = Array.from(rows).filter(
+    (row) => row.style.display !== "none"
+  ).length;
+
+  fontCountSpan.textContent = visibleCount;
 }
 
 function updateSamples() {
@@ -475,8 +615,6 @@ function showAboutModal(data) {
   supportText.textContent =
     "Like the app? Support its development by buying me a coffee!";
 
-  const { shell } = require("electron");
-
   const supportLink = document.createElement("a");
   supportLink.className = "about-support-link";
   supportLink.href = "#";
@@ -548,7 +686,7 @@ function showHowToModal(data) {
   });
 }
 
-function showDescriptionModal(font) {
+async function showDescriptionModal(font) {
   const body = document.createElement("div");
   body.className = "description-editor";
 
@@ -571,6 +709,33 @@ function showDescriptionModal(font) {
   body.appendChild(help);
   body.appendChild(input);
 
+  const actionWrapLeft = document.createElement("div");
+  actionWrapLeft.className = "modal-actions-left";
+
+  const actionWrapRight = document.createElement("div");
+  actionWrapRight.className = "modal-actions-right";
+
+  const hasDefault = await hasDefaultDescription(font.file);
+
+  if (hasDefault) {
+    const resetBtn = createModalButton("Reset to Default", {
+      onClick: async () => {
+        const ok = await resetDescriptionToDefault(font.file);
+        if (!ok) return;
+
+        closeModal();
+        await loadFonts();
+        showInlineStatus("Description reset to default.", "success", 1800);
+      }
+    });
+
+    resetBtn.classList.add("secondary-warn");
+    actionWrapLeft.appendChild(resetBtn);
+  }
+
+  const spacer = document.createElement("div");
+  spacer.className = "modal-actions-spacer";
+
   const cancelBtn = createModalButton("Cancel", {
     onClick: closeModal
   });
@@ -587,10 +752,13 @@ function showDescriptionModal(font) {
     }
   });
 
+  actionWrapRight.appendChild(cancelBtn);
+  actionWrapRight.appendChild(saveBtn);
+
   showModal({
     title: "Set Description",
     bodyNode: body,
-    actions: [cancelBtn, saveBtn]
+    actions: [actionWrapLeft, spacer, actionWrapRight]
   });
 
   setTimeout(() => {

@@ -255,8 +255,8 @@ function createMenu() {
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width: 1300,
+    height: 900,
     minWidth: 900,
     minHeight: 650,
     title: "Star Wars Font Finder",
@@ -431,6 +431,56 @@ ipcMain.handle("get-fonts-dir", async () => {
     return {
       ok: false,
       message: err.message || "Failed to get fonts folder."
+    };
+  }
+});
+
+ipcMain.handle("has-default-font-description", async (_event, payload) => {
+  try {
+    const { fontFile } = payload || {};
+
+    if (!fontFile) {
+      return { ok: false, hasDefault: false, message: "Missing font file." };
+    }
+
+    const defaults = loadJsonObject(getDefaultDescriptionsFilePath());
+
+    return {
+      ok: true,
+      hasDefault: Object.prototype.hasOwnProperty.call(defaults, fontFile)
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      hasDefault: false,
+      message: err.message || "Failed to check default description."
+    };
+  }
+});
+
+ipcMain.handle("reset-font-description-to-default", async (_event, payload) => {
+  try {
+    const { fontFile } = payload || {};
+
+    if (!fontFile) {
+      return { ok: false, message: "Missing font file." };
+    }
+
+    const userFile = getUserDescriptionsFilePath();
+    const userDescriptions = loadJsonObject(userFile);
+
+    delete userDescriptions[fontFile];
+
+    saveJsonObject(userFile, userDescriptions);
+
+    return {
+      ok: true,
+      descriptions: getMergedDescriptions()
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      message: err.message || "Failed to reset description."
     };
   }
 });
@@ -698,6 +748,125 @@ Write-Output 'OK'
     return {
       ok: false,
       message: err.message || "Failed to install font."
+    };
+  }
+});
+
+ipcMain.handle("uninstall-font", async (_event, payload) => {
+  try {
+    if (process.platform !== "win32") {
+      return {
+        ok: false,
+        message: "Font uninstall is currently implemented for Windows only."
+      };
+    }
+
+    const { fontPath, displayName } = payload || {};
+
+    if (!fontPath || !displayName) {
+      return {
+        ok: false,
+        message: "Missing font path or display name."
+      };
+    }
+
+    const ext = path.extname(fontPath).toLowerCase();
+    if (![".ttf", ".otf"].includes(ext)) {
+      return {
+        ok: false,
+        message: "Only TTF and OTF fonts can be uninstalled from Windows."
+      };
+    }
+
+    const psScript = `
+param(
+  [Parameter(Mandatory = $true)]
+  [string]$FontPath,
+
+  [Parameter(Mandatory = $true)]
+  [string]$DisplayName
+)
+
+$ErrorActionPreference = 'Stop'
+
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public class FontUtil {
+  [DllImport("gdi32.dll", CharSet = CharSet.Unicode)]
+  public static extern bool RemoveFontResourceW(string lpFileName);
+
+  [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+  public static extern IntPtr SendMessageTimeout(
+    IntPtr hWnd,
+    uint Msg,
+    UIntPtr wParam,
+    string lParam,
+    uint fuFlags,
+    uint uTimeout,
+    out UIntPtr lpdwResult
+  );
+}
+"@
+
+$fileName = [System.IO.Path]::GetFileName($FontPath)
+$userFontsDir = Join-Path $env:LOCALAPPDATA 'Microsoft\\Windows\\Fonts'
+$installedPath = Join-Path $userFontsDir $fileName
+$regPath = 'HKCU:\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Fonts'
+
+if (Test-Path -LiteralPath $installedPath) {
+  try {
+    [void][FontUtil]::RemoveFontResourceW($installedPath)
+  } catch {}
+}
+
+if (Test-Path $regPath) {
+  $props = Get-ItemProperty -Path $regPath
+  foreach ($p in $props.PSObject.Properties) {
+    $name = [string]$p.Name
+    $value = [string]$p.Value
+
+    if ($value -and $value.ToLowerInvariant() -eq $fileName.ToLowerInvariant()) {
+      Remove-ItemProperty -Path $regPath -Name $name -ErrorAction SilentlyContinue
+    }
+    elseif ($DisplayName -and $name -like "$DisplayName*") {
+      Remove-ItemProperty -Path $regPath -Name $name -ErrorAction SilentlyContinue
+    }
+  }
+}
+
+if (Test-Path -LiteralPath $installedPath) {
+  Remove-Item -LiteralPath $installedPath -Force
+}
+
+$HWND_BROADCAST = [IntPtr]0xffff
+$WM_FONTCHANGE = 0x001D
+$SMTO_ABORTIFHUNG = 0x0002
+$result = [UIntPtr]::Zero
+[void][FontUtil]::SendMessageTimeout($HWND_BROADCAST, $WM_FONTCHANGE, [UIntPtr]::Zero, $null, $SMTO_ABORTIFHUNG, 1000, [ref]$result)
+
+Write-Output 'OK'
+`;
+
+    const result = await runPowerShellFile(psScript, [
+      "-FontPath",
+      fontPath,
+      "-DisplayName",
+      displayName
+    ]);
+
+    if (!result.ok) {
+      return result;
+    }
+
+    return {
+      ok: true,
+      message: `"${displayName}" uninstalled for the current Windows user.`
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      message: err.message || "Failed to uninstall font."
     };
   }
 });
