@@ -154,7 +154,9 @@ _Notes for development:_
 ## Bug Reporting
 ### How to report a bug
 If you notice a bug or repeatable weird glitch in the app, please post an Issue on the **[Issues](https://github.com/RHopper85/SWFF/issues)** page so that I can get to the bottom of it. 
-
+---
+## Credit where credit is due
+Most of the fonts and descriptions were found on <a href="https://aurekfonts.github.io/">AurekFonts</a>. <br>I will add more as I discover them. I won't add any fonts that require a license because, well, that's illegal :)
 ---
 <p align="center">
   <b>If you like the app and want to help me keep doing what I love,</b><br><br>
