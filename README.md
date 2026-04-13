@@ -1,4 +1,12 @@
+
+
 # Star Wars Font Finder
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/81860f6f-0f78-4193-9ae9-0b7f857b38cd" width="500" />
+</p>
+
+
 
 Are you like me and hate having to scour the internet for a Star Wars font when you need it for a project? Have no fear, this app comes packed with nearly 100 different Star Wars fonts for your needs!
 
@@ -21,6 +29,10 @@ For each font, the app can show:
 - an install button for supported Windows font types
 
 The app also supports built-in descriptions that ship with the app, while still allowing users to edit or add their own descriptions without losing them during future updates.
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/20317924-ae8c-43bb-972f-3fc93e21e412" width="800" />
+</p>
 
 ---
 
@@ -109,7 +121,7 @@ If you come across a star wars font you like and want to add it to the app
 - Click **File** > **Open Fonts Folder**
 You can drop your .ttf/.otf files in here. Be sure to click the **Reload Fonts** button to refresh the fonts list.
 
-If there is a font you'd like to have added to the app itself so that all users receive it in future updates, submit an **Issue**. Please mark it with the label **"Request to Add A Font"**.
+If there is a font you'd like to have added to the app itself so that all users receive it in future updates, submit an **[Issue](https://github.com/RHopper85/SWFF/issues)**. Please mark it with the label **"Request to Add A Font"**.
 
 
 ---
@@ -141,6 +153,6 @@ _Notes for development:_
 
 ## Bug Reporting
 ### How to report a bug
-If you notice a bug or repeatable weird glitch in the app, please post an Issue on the **Issues** page so that I can get to the bottom of it. 
+If you notice a bug or repeatable weird glitch in the app, please post an Issue on the **[Issues](https://github.com/RHopper85/SWFF/issues)** page so that I can get to the bottom of it. 
 
 #### May the Font be with you
