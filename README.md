@@ -155,4 +155,12 @@ _Notes for development:_
 ### How to report a bug
 If you notice a bug or repeatable weird glitch in the app, please post an Issue on the **[Issues](https://github.com/RHopper85/SWFF/issues)** page so that I can get to the bottom of it. 
 
-#### May the Font be with you
+---
+<p align="center">
+  <b>If you like the app and want to help me keep doing what I love,</b><br><br>
+  <a href="https://ko-fi.com/hop9285">
+    <img src="https://github.com/RHopper85/SWFF/blob/main/ko-fi.png" width="400" />
+  </a>
+<br><b>May the Font be with you</b>
+</p>
+
